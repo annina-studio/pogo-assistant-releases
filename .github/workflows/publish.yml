@@ -25,19 +25,25 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           python3 - <<'PY'
-          import glob, hashlib, os, pathlib, re, subprocess
-          version = os.environ['RELEASE_VERSION']
-          assert re.fullmatch(r'v\d+\.\d+\.\d+', version), 'Invalid release tag'
-          apk = pathlib.Path(f'pogo-assistant-{version}.apk')
-          checksum = pathlib.Path(f'{apk}.sha256').read_text().split()
-          assert len(checksum) == 2 and checksum[1] == apk.name, 'Invalid checksum filename'
-          assert hashlib.sha256(apk.read_bytes()).hexdigest() == checksum[0], 'APK checksum mismatch'
-          signers = sorted(glob.glob(os.environ['ANDROID_HOME'] + '/build-tools/*/apksigner'))
-          assert signers, 'Android signature verifier unavailable'
-          result = subprocess.run([signers[-1], 'verify', '--print-certs', str(apk)], check=True, text=True, capture_output=True)
-          certificates = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([0-9a-f]+)', result.stdout)
-          assert certificates == ['472a6e48c227ce2996b77666e7d2e7d6fe67b3a7b4b48eb13ee68ae084708f9a'], 'Unexpected signing certificate'
-          print('Verified APK checksum and permanent signing certificate.')
+          import traceback
+          try:
+              import glob, hashlib, os, pathlib, re, subprocess
+              version = os.environ['RELEASE_VERSION']
+              assert re.fullmatch(r'v\d+\.\d+\.\d+', version), 'Invalid release tag'
+              apk = pathlib.Path(f'pogo-assistant-{version}.apk')
+              checksum = pathlib.Path(f'{apk}.sha256').read_text().split()
+              assert len(checksum) == 2 and checksum[1] == apk.name, 'Invalid checksum filename'
+              assert hashlib.sha256(apk.read_bytes()).hexdigest() == checksum[0], 'APK checksum mismatch'
+              signers = sorted(glob.glob(os.environ['ANDROID_HOME'] + '/build-tools/*/apksigner'))
+              assert signers, 'Android signature verifier unavailable'
+              result = subprocess.run([signers[-1], 'verify', '--print-certs', str(apk)], check=True, text=True, capture_output=True)
+              certificates = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([0-9a-f]+)', result.stdout)
+              assert certificates == ['472a6e48c227ce2996b77666e7d2e7d6fe67b3a7b4b48eb13ee68ae084708f9a'], 'Unexpected signing certificate'
+              print('Verified APK checksum and permanent signing certificate.')
+          except Exception as error:
+              message = str(error).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print("::error::" + type(error).__name__ + ": " + message, flush=True)
+              raise
           PY
       - name: Attach APK and publish normal latest release
         env:
