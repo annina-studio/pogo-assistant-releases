@@ -53,5 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh release view "$RELEASE_VERSION" --json isDraft --jq .isDraft)" = true
-          gh release upload "$RELEASE_VERSION" "pogo-assistant-$RELEASE_VERSION.apk" "pogo-assistant-$RELEASE_VERSION.apk.sha256" --clobber
+          # Always finish the APK upload before starting its checksum upload.
+          gh release upload "$RELEASE_VERSION" "pogo-assistant-$RELEASE_VERSION.apk" --clobber
+          gh release upload "$RELEASE_VERSION" "pogo-assistant-$RELEASE_VERSION.apk.sha256" --clobber
           gh release edit "$RELEASE_VERSION" --draft=false --prerelease=false --latest=true
